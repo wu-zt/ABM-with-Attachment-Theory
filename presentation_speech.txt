@@ -1,0 +1,118 @@
+Hello，everyone.
+Today I am gonna too talk about my research on An Agent-Based Model Integrating Attachment Theory for Disaster Scenarios.
+And first I want to briefly introduce what is a "Attachment Theory".
+
+So the Attachment Theory first developed by John Bowlby.
+It posits that infants need to form a close relationship with at least one primary caregiver to ensure their survival and to develop healthy social and emotional functioning.
+And we have four normol type of attachment :
+sevure,the people not anxious and not cold
+ anxiety, the people always worry about something
+avoidant, who want to run away from intimate relationship
+ and the fearful type (is the mixed of anxiety and avoidant).
+
+As the research progressed, people found that Attachment Theory not only in infants, also will affect adults imitate relationships and self identifecation and interations.
+In 1991,Bartholomew and Horowitz proposed the four quadrant model,
+After that,Brennan, Clark & Shaver (1998) used principal component analysis to prove that attachment is actually a continuous two-dimensional space.
+It shows as this graph. 
+The horizontal X-axis represents Attachment Anxiety, and the vertical Y-axis represents Attachment Avoidance.(like picture)
+
+In traditional psychology, the secure type is the best.
+Why do the insucre type still survive almost 50 % even now?
+
+To address this, Tsachi Ein-Dor (2010) proposed Social Defense Theory .
+It talks about insecure traits are not mere psychological deficits, but rather adaptive evolutionary strategies for extreme environmental crises. 
+In life-threatening situations, individuals with different attachment traits offer unique survival values—such as early threat detection by highly anxious individuals and rapid escape route discovery by highly avoidant ones. 
+
+Here are some related works about the Computational research with Attachment-related behavior.
+Bañgate et al. (2019) employed Agent-Based Modeling (ABM) to examine human behavioral patterns during crisis evacuations. 
+Gagliardi et al. (2022) have extended this computational approach by simulating mother-infant interactions.
+
+About these research, 
+They focus on individual level and physical interactions,lack of the macro-evolutionary perspective of natural selection across hundreds of generations
+Traditional disaster evacuation models typically treat agents as homogeneous "physical particles"，real human has their own personalities, the mobility will be influebnced by a lot of factors
+
+So my idead is to translating the Social Defense Theory (SDT) into an Agent-Based Model (ABM).
+Try to simulate the survival advantages of multi-dimensional attachment traits in dynamic environments.
+And my simulate tool is Netlogo.
+
+Next part is about the Agent Description.
+So, in the simulation, we have a lot of agents and environment.
+The  agents are the different attachment type of people, and the environment is the disasster. I set the disaster as fire here. Because fire is easy to observe and it also has a spred time, so the agents have time to observe and run away.
+And each agents has the mixmum social distance, agents can also sensitve the fire.
+
+The agents has the Genotype, I set the Genotype as the we just talk the 2 dimensional graph before.
+The horizontal X-axis represents Attachment Anxiety, and the vertical Y-axis represents Attachment Avoidance.
+Based on this framework, the four prototypical attachment styles are on the four quadrants.
+l  Quadrant I (X > 0, Y > 0) — Fearful-Avoidant: Characterized by both high anxiety and high avoidance (negative models of both self and significant others).
+l  Quadrant II (X < 0, Y > 0) — Dismissing-Avoidant: Characterized by low anxiety but high avoidance (positive model of self, negative model of significant others).
+l  Quadrant III (X < 0, Y < 0) — Secure: Characterized by low anxiety and low avoidance (positive models of both self and significant others).
+l  Quadrant IV (X > 0, Y < 0) — Preoccupied: Characterized by high anxiety but low avoidance (negative model of self, positive model of significant others).
+And different type are in different color.
+
+And the next is how the Genotype will be show in the simulation is the Phenotype.
+according to the Social Defense Theory, we defined the following:
+Vision-radius : sensitive the fire,depends on the anxiety value, the higher the level of anxiety, the farther one can see.
+Energy : same initialization
+Social-distance : depends on the avoidant value
+State：fleeing and wandering
+
+So basically, the agents wandering at first, they are walking in random direction and moves slowly. 
+If the agents don't observe the disaster, they will keep wandering state, it will consume the energy only depends on the anxiety value.
+If they observe the disaster, the agents will change to the fleeing state. The flee force are made by the away from the disaster and avoid form other agents.
+It will consume more energy than wandering type.
+If the agents touch the disaster or they consume all energy, the agents will die.
+If they not die, they will keep the routine.
+
+And about the environment, it is gradually spreading fire from center, it will be max of 70 percent of the map.
+Let's see a short vedio of how it works.
+
+
+[Slide 1: Introduction]
+Hello, everyone. Today, I am going to talk about my research titled "An Agent-Based Model Integrating Attachment Theory for Disaster Scenarios."
+[Slide  2: Introduction]
+First, I want to briefly introduce Attachment Theory. Originally developed by John Bowlby, it posits that infants need to form a close relationship with at least one primary caregiver to ensure their survival and to develop healthy social and emotional functioning. There are four main types of attachment: Secure, Anxious, Avoidant, and Fearful, which is a mix of anxious and avoidant traits.  
+[Slide 3: 2D Model]
+As research progressed, psychologists found that Attachment Theory also applies to adults, affecting their intimate relationships and social interactions. In 1991, Bartholomew and Horowitz proposed the four-quadrant model. Later, in 1998, Brennan, Clark, and Shaver used principal component analysis to prove that attachment is actually a continuous two-dimensional space. As shown in this graph, the horizontal X-axis represents Attachment Anxiety, and the vertical Y-axis represents Attachment Avoidance. 
+[Slide 4 : Motivation]
+In traditional psychology, the secure type is considered the best. But this raises a question: Why do the insecure traits still survive in about 50% of the population?  
+[Slide 5: Motivation]
+To address this, Tsachi Ein-Dor proposed the Social Defense Theory in 2010. This theory suggests that insecure traits are not mere psychological deficits, but rather adaptive evolutionary strategies for extreme environmental crises. In life-threatening situations, individuals with different attachment traits offer unique survival values—such as early threat detection by highly anxious individuals, and rapid escape route discovery by highly avoidant ones.  
+[Slide 6 : Related Works]
+Here are some related computational studies on attachment behavior. 
+Bañgate et al. (2019) employed Agent-Based Modeling (ABM) to examine human behavioral patterns during crisis evacuations. 
+Gagliardi et al. (2022) extended this computational approach by simulating mother-infant interactions.  However, these studies mainly focus on the individual level and physical interactions. 
+[Slide 7:  Limitations]
+Traditional disaster evacuation models typically treat agents as homogeneous "physical particles". But in reality, humans have their own personalities, and their mobility is influenced by various psychological factors.  
+[Slide 8: Proposed Idea]
+Therefore, my proposed idea is to translate the Social Defense Theory into an Agent-Based Model. 
+The goal is to simulate the survival advantages of multi-dimensional attachment traits in dynamic environments.
+The simulation tool I am using is NetLogo.  
+[Slide 9: Model Description - Environment]
+Next, let's look at the model description.
+In our simulation, the environment is a disaster scenario, specifically a fire spreading outward from the center. 
+I chose fire because it is easy to observe and has a clear spread time, giving agents time to react.  
+The agents represent people with different attachment types. 
+[Slide 10: Model Description - Genotype]
+For their Genotype, we use the continuous two-dimensional framework we discussed earlier. Based on the X and Y axes, the four prototypical attachment styles fall into four quadrants: 
+Quadrant I is Fearful-Avoidant, characterized by high anxiety and high avoidance.
+Quadrant II is Dismissing-Avoidant, with low anxiety but high avoidance.  
+Quadrant III is the Secure type, with low anxiety and low avoidance.
+Quadrant IV is the Preoccupied type, characterized by high anxiety but low avoidance.
+In the simulation, different types are represented by different colors.  
+[Slide 11 : Phenotype]
+Next is the Phenotype, which determines how the agents behave. 
+According to the Social Defense Theory, we defined the following attributes:  
+Vision-radius: This determines how sensitive they are to the fire, which depends on the anxiety value. The higher the anxiety, the farther the agent can see.  
+Social-distance: This depends on the avoidance value.  
+Energy: All agents start with the same initial energy.  
+Agents have two states: wandering and fleeing. 
+[Slide 12:  Flowchart]
+Initially, agents wander in random directions and move slowly. If they don't observe the disaster, they remain in the wandering state, which consumes a basic amount of energy plus an anxiety-related energy cost.  Once an agent observes the disaster, it changes to the fleeing state. The fleeing force is driven by two factors: moving away from the disaster and avoiding other agents. Fleeing consumes 1.5 times more energy. If an agent touches the disaster or their energy drops to zero, they will die. If they survive, they continue their routine.  
+[Slide 13: Transition to Video]
+As for the environment, the fire gradually spreads from the center.
+Now, let's watch a short video of how this works in action.
+
+
+
+
+
