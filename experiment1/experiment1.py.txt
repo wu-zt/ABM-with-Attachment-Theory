@@ -1,0 +1,82 @@
+"""
+分析 disaster_duration_test 的 BehaviorSpace 结果
+把这个脚本和三个 csv 放在同一个文件夹下运行即可：
+    pip install pandas matplotlib
+    python analyze_disaster_duration.py
+"""
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# ---------- 1. 读数据 ----------
+TABLE_FILE = "AT_disaster_duration_test-table.csv"
+STATS_FILE = "AT_disaster_duration_test-stats.csv"
+
+table = pd.read_csv(TABLE_FILE, skiprows=6)
+table.columns = ["run", "initial_pop", "epoch_duration", "step",
+                  "green", "yellow", "blue", "red"]
+
+stats = pd.read_csv(STATS_FILE, skiprows=6)
+stats.columns = ["initial_pop", "epoch_duration", "step",
+                  "green_mean", "green_std", "yellow_mean", "yellow_std",
+                  "blue_mean", "blue_std", "red_mean", "red_std"]
+
+COLORS = {"green": "#639922", "yellow": "#eda100", "blue": "#2a78d6", "red": "#e34948"}
+LABELS = {"green": "安全型", "yellow": "疏离回避型", "blue": "迷恋型", "red": "恐惧回避型"}
+DURATIONS = sorted(table.epoch_duration.unique())
+
+
+# ---------- 2. 图A：每个 duration 条件下的平均存活曲线（用 stats.csv，含 std 阴影） ----------
+fig, axes = plt.subplots(1, len(DURATIONS), figsize=(6 * len(DURATIONS), 4.5), sharey=True)
+for ax, ed in zip(axes, DURATIONS):
+    sub = stats[stats.epoch_duration == ed].sort_values("step")
+    for c in ["green", "yellow", "blue", "red"]:
+        ax.plot(sub["step"], sub[f"{c}_mean"], color=COLORS[c], label=LABELS[c])
+        ax.fill_between(sub["step"],
+                         sub[f"{c}_mean"] - sub[f"{c}_std"],
+                         sub[f"{c}_mean"] + sub[f"{c}_std"],
+                         color=COLORS[c], alpha=0.15)
+    ax.set_title(f"epoch-duration = {ed}")
+    ax.set_xlabel("tick")
+ax_left = axes[0]
+ax_left.set_ylabel("population (mean ± std, n=10)")
+ax_left.legend()
+plt.tight_layout()
+plt.savefig("survival_curves_by_duration.png", dpi=150)
+print("已保存 survival_curves_by_duration.png")
+
+
+# ---------- 3. 图B：四种类型在三种 duration 下的最终存活率（分组柱状图） ----------
+finals = table.loc[table.groupby("run")["step"].idxmax()]
+initials = table.loc[table.groupby("run")["step"].idxmin()]
+merged = initials[["run", "epoch_duration", "green", "yellow", "blue", "red"]].merge(
+    finals[["run", "green", "yellow", "blue", "red"]], on="run", suffixes=("_i", "_f")
+)
+for c in ["green", "yellow", "blue", "red"]:
+    merged[f"{c}_surv"] = merged[f"{c}_f"] / merged[f"{c}_i"]
+
+summary = merged.groupby("epoch_duration")[[f"{c}_surv" for c in COLORS]].mean() * 100
+print("\n=== 平均存活率（%），按 epoch_duration 分组 ===")
+print(summary.round(1))
+
+fig2, ax2 = plt.subplots(figsize=(7, 5))
+x = range(len(DURATIONS))
+width = 0.2
+for i, c in enumerate(["green", "yellow", "blue", "red"]):
+    vals = [summary.loc[ed, f"{c}_surv"] for ed in DURATIONS]
+    ax2.bar([xi + i * width for xi in x], vals, width=width, color=COLORS[c], label=LABELS[c])
+ax2.set_xticks([xi + 1.5 * width for xi in x])
+ax2.set_xticklabels([f"{ed} ticks" for ed in DURATIONS])
+ax2.set_ylabel("存活率 (%)")
+ax2.legend()
+plt.tight_layout()
+plt.savefig("survival_rate_bar.png", dpi=150)
+print("已保存 survival_rate_bar.png")
+
+
+# ---------- 4. 灭绝检查：400-tick 条件下，10次重复里 blue/red 是否都归零 ----------
+long_run = merged[merged.epoch_duration == merged.epoch_duration.max()]
+print("\n=== 长灾难条件下每次重复的最终存活个体数（检查是否灭绝） ===")
+print(long_run[["run", "blue_f", "red_f", "green_f", "yellow_f"]].to_string(index=False))
+
+plt.show()
