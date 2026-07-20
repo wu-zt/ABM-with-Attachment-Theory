@@ -132,3 +132,4 @@ plt.savefig(f"phenotype_curves_early_vs_late_gen_duration{ed_focus}.png", dpi=15
 print(f"Saved phenotype_curves_early_vs_late_gen_duration{ed_focus}.png")
 
 plt.show()
+print(gen_summary.groupby("epoch_duration")["generation"].nunique())
