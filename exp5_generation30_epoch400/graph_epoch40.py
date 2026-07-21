@@ -38,7 +38,7 @@ for col, color in colors_map.items():
                      color=color, alpha=0.2)
 
 # 5. 图表美化 👉 重点：标题改成 Epoch = 400
-plt.title('Evolution of Attachment Styles over 30 Generations (Epoch = 400)', fontsize=14, pad=15)
+plt.title('Evolution of Attachment Styles over 10 Generations (Epoch = 400)', fontsize=14, pad=15)
 plt.xlabel('Simulation Steps (401 steps = 1 Generation)', fontsize=12) # 注意 400 的代长是 401
 plt.ylabel(f'Population Count (Mean ± Std, n={n_runs})', fontsize=12)
 
@@ -47,6 +47,6 @@ plt.grid(True, linestyle='--', alpha=0.6)
 plt.tight_layout()
 
 # 保存新图
-plt.savefig('evolution_curve_30gens_epoch400.png', dpi=300)
-print("图表已成功保存为 'evolution_curve_30gens_epoch400.png'")
+plt.savefig('evolution_curve_10gens_epoch400.png', dpi=300)
+print("图表已成功保存为 'evolution_curve_10gens_epoch400.png'")
 plt.show()
