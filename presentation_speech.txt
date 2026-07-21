@@ -66,32 +66,51 @@ If they not die, they will keep the routine.
 And about the environment, it is gradually spreading fire from center, it will be max of 70 percent of the map.
 Let's see a short vedio of how it works.
 
+And here is the erxperiment setup,这里我需要介绍试验参数吗？
+It illustrates the population dynamics of the four attachment phenotypes over 30 generations (3030 steps) under a short-duration disaster setting (Epoch tick= 100).
+The solid lines represent the mean population count across 5 independent runs, while the translucent shaded areas indicate the standard deviation, capturing the stochastic variance in the evolutionary process.
+'sawtooth' pattern：Each sharp downward plunge represents natural selection in action—individuals dying from environmental threats or metabolic depletion during the 100-step disaster epoch. The subsequent vertical rebound indicates the asexual reproduction phase at the end of each generation, where survivors repopulate the environment back to the carrying capacity of 100 agents.
+
+关于实验结果，我们可以看到在短期灾难的时候（epoch=50）焦虑值高的个体存活高吗，是因为他们可以在短期看的更远，能较早识别危险，但是我们可以看到当epoch加到400，明显会比数值高的占优势，因为焦虑值高的个体消耗了过多能量，
+Future plan
+下一步打算增加个体数量，因为我认为socia-distance没有发挥出作用，回避数值高的个体会产生一个斥力，防止他们远离灾难。。。可能会造成实验结果的变化。。。
+
 
 [Slide 1: Introduction]
 Hello, everyone. Today, I am going to talk about my research titled "An Agent-Based Model Integrating Attachment Theory for Disaster Scenarios."
+
 [Slide  2: Introduction]
 First, I want to briefly introduce Attachment Theory. Originally developed by John Bowlby, it posits that infants need to form a close relationship with at least one primary caregiver to ensure their survival and to develop healthy social and emotional functioning. There are four main types of attachment: Secure, Anxious, Avoidant, and Fearful, which is a mix of anxious and avoidant traits.  
+
 [Slide 3: 2D Model]
 As research progressed, psychologists found that Attachment Theory also applies to adults, affecting their intimate relationships and social interactions. In 1991, Bartholomew and Horowitz proposed the four-quadrant model. Later, in 1998, Brennan, Clark, and Shaver used principal component analysis to prove that attachment is actually a continuous two-dimensional space. As shown in this graph, the horizontal X-axis represents Attachment Anxiety, and the vertical Y-axis represents Attachment Avoidance. 
+
 [Slide 4 : Motivation]
 In traditional psychology, the secure type is considered the best. But this raises a question: Why do the insecure traits still survive in about 50% of the population?  
+
 [Slide 5: Motivation]
 To address this, Tsachi Ein-Dor proposed the Social Defense Theory in 2010. This theory suggests that insecure traits are not mere psychological deficits, but rather adaptive evolutionary strategies for extreme environmental crises. In life-threatening situations, individuals with different attachment traits offer unique survival values—such as early threat detection by highly anxious individuals, and rapid escape route discovery by highly avoidant ones.  
+
 [Slide 6 : Related Works]
 Here are some related computational studies on attachment behavior. 
 Bañgate et al. (2019) employed Agent-Based Modeling (ABM) to examine human behavioral patterns during crisis evacuations. 
-Gagliardi et al. (2022) extended this computational approach by simulating mother-infant interactions.  However, these studies mainly focus on the individual level and physical interactions. 
+Gagliardi et al. (2022) extended this computational approach by simulating mother-infant interactions.  
+
 [Slide 7:  Limitations]
+However, these studies mainly focus on the individual level and physical interactions. 
 Traditional disaster evacuation models typically treat agents as homogeneous "physical particles". But in reality, humans have their own personalities, and their mobility is influenced by various psychological factors.  
+
 [Slide 8: Proposed Idea]
 Therefore, my proposed idea is to translate the Social Defense Theory into an Agent-Based Model. 
 The goal is to simulate the survival advantages of multi-dimensional attachment traits in dynamic environments.
 The simulation tool I am using is NetLogo.  
+
 [Slide 9: Model Description - Environment]
 Next, let's look at the model description.
 In our simulation, the environment is a disaster scenario, specifically a fire spreading outward from the center. 
 I chose fire because it is easy to observe and has a clear spread time, giving agents time to react.  
 The agents represent people with different attachment types. 
+
 [Slide 10: Model Description - Genotype]
 For their Genotype, we use the continuous two-dimensional framework we discussed earlier. Based on the X and Y axes, the four prototypical attachment styles fall into four quadrants: 
 Quadrant I is Fearful-Avoidant, characterized by high anxiety and high avoidance.
@@ -99,6 +118,7 @@ Quadrant II is Dismissing-Avoidant, with low anxiety but high avoidance.
 Quadrant III is the Secure type, with low anxiety and low avoidance.
 Quadrant IV is the Preoccupied type, characterized by high anxiety but low avoidance.
 In the simulation, different types are represented by different colors.  
+
 [Slide 11 : Phenotype]
 Next is the Phenotype, which determines how the agents behave. 
 According to the Social Defense Theory, we defined the following attributes:  
@@ -106,13 +126,52 @@ Vision-radius: This determines how sensitive they are to the fire, which depends
 Social-distance: This depends on the avoidance value.  
 Energy: All agents start with the same initial energy.  
 Agents have two states: wandering and fleeing. 
+
 [Slide 12:  Flowchart]
 Initially, agents wander in random directions and move slowly. If they don't observe the disaster, they remain in the wandering state, which consumes a basic amount of energy plus an anxiety-related energy cost.  Once an agent observes the disaster, it changes to the fleeing state. The fleeing force is driven by two factors: moving away from the disaster and avoiding other agents. Fleeing consumes 1.5 times more energy. If an agent touches the disaster or their energy drops to zero, they will die. If they survive, they continue their routine.  
 [Slide 13: Transition to Video]
 As for the environment, the fire gradually spreads from the center.
 Now, let's watch a short video of how this works in action.
 
+[Slide 14: Experiment Setup]
+Before jumping into the results, let's briefly look at the experiment setup. We tested the model across three different disaster durations: Epoch 50 for a short-term disaster, Epoch 100 for a mid-term disaster, and Epoch 400 for a long-term disaster. The initial population is set to 100 agents. 
+
+[Slide 15: Experiment Results]
+Now, let's look at the results. This first chart shows the short-duration disaster (Epoch 50). The solid lines represent the average population count, and the shaded areas show the standard deviation. 
+First, you will notice a clear "sawtooth" pattern across all charts. The sharp downward drop represents natural selection—agents dying from the fire or running out of energy. The vertical line going back up indicates the reproduction phase at the end of each generation.
+In this short disaster, the blue line—individuals with high anxiety—has the highest survival rate. This matches our hypothesis: highly anxious agents can see further, so they detect the danger earlier and escape quickly.
+
+[Slide 16: Experiment Results]
+When we extend the disaster to a mid-term duration of 100 steps, the highly anxious agents still maintain an advantage, but we can see the dynamics start to shift as energy consumption becomes a bigger factor.
+
+[Slide 17: Experiment Results]
+However, when we increase the disaster duration to Epoch 400, the situation changes completely.
+As you can see, the highly anxious agents are no longer the best. Instead, the highly avoidant agents—the yellow line—take the lead. Why does this happen? Because high anxiety causes agents to consume energy much faster. In a long-term disaster, the anxious agents simply burn through all their energy and die from exhaustion before the disaster ends. The avoidant agents survive much better here.
+
+[Slide 18: Future Plan]
+Finally, for our future plans, we intend to increase the total number of agents to create a more crowded environment.
+In our current experiments, the map is relatively empty, which means the "social distance" trait hasn't played a major role yet. According to our design, individuals with high avoidance will generate a repulsive force to keep away from others. In a high-density scenario, this repulsive force might prevent them from escaping efficiently, or it might help them avoid dangerous crowds. We believe testing different population densities will bring new insights to the simulation results.
 
 
+【Q&A】
+Q1: What is your research question?
+My core research question is: How do different attachment traits—specifically anxiety and avoidance—provide survival advantages in different disaster scenarios? Instead of just looking at psychological concepts, I want to use computational modeling to explore that these 'insecure' traits are actually adaptive evolutionary strategies.
 
+Q2: Why ABM?
+I chose Agent-Based Modeling because traditional disaster evacuation models often treat people as identical 'physical particles'. However, real humans have different personalities and psychological states. ABM is excellent for simulating complex social behaviors. It allows me to give each agent a unique personality based on their attachment style, and observe how their individual choices affect the survival of the whole population.
 
+Q3: How do you use the GA (Genetic Algorithm) part?
+In this model, the Genetic Algorithm is mainly used during the reproduction phase. At the end of each disaster epoch, the simulation checks who survived. These survivors will reproduce to bring the population back to 100. During this reproduction process, I introduce a small mutation to their genotype—their anxiety and avoidance values. This allows us to observe how natural selection shapes the population's traits over multiple generations.
+
+Q4: How did you define the experiment setting?
+That’s a very good question. The behavioral rules are strictly based on Social Defense Theory—for example, higher anxiety leads to a larger vision radius.
+However, the exact numerical parameters (like energy equals 100) are currently set as an abstract baseline. Because this is an exploratory model, my current goal is to test the theoretical concept qualitatively, not quantitatively. In the future, I plan to calibrate these parameters using empirical data from real-world evacuations, or refer to classic pedestrian dynamics models, like the Social Force Model, to make the simulation more rigorous.
+
+Q5：What is the advantage of the Secure type？
+In the current model, the Secure type acts as a baseline with moderate vision and moderate energy consumption. Their advantage is balance—they perform decently in all situations, even if they don't peak in extreme ones. In future iterations, we could add 'cooperative behaviors'. According to psychology, secure individuals tend to help others or share information. Adding this would fully demonstrate their evolutionary advantage.
+
+Q6：Why did you define that higher anxiety leads to faster energy consumption? Is there a scientific basis for this?
+Yes, this is based on physiological responses. Individuals with high anxiety typically experience a stronger 'fight-or-flight' response when facing stress. This causes higher heart rates, increased stress hormones, and heavier cognitive load, which physically and mentally consumes more energy than a calm person.
+
+Q7:You set the initial genotype range to a uniform distribution [-1, 1]. But in reality, about 50% of people are Secure. How would a realistic initial distribution affect the results?
+That is a very insightful point. We used a uniform distribution to give every trait an equal starting point for this proof-of-concept. If we start with a realistic 50% secure population, I expect the secure type to dominate even longer in general situations. However, during extreme disaster epochs, we would still see the anxious or avoidant types spike in survival rates. Testing this realistic distribution is definitely on my to-do list.

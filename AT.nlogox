@@ -63,7 +63,7 @@ end
 
 to go
   ; End of the epoch: Reproduce survivors and reset for the next generation
-  if epoch-ticks >= epoch-duration [
+  ifelse epoch-ticks >= epoch-duration [
     
     ; --- before next generation, print the number of each population ---
     let sec count turtles with [color = green]
@@ -83,7 +83,7 @@ to go
     reproduce
     reset-epoch
     set generation generation + 1
-  ]
+  ][
 
   ; 1. Update environmental threat
   update-disaster
@@ -100,6 +100,7 @@ to go
   
   ; 3. time forward
   set epoch-ticks epoch-ticks + 1
+]
   tick
 end
 
@@ -255,20 +256,18 @@ to reproduce
   ]
 end]]></code>
   <widgets>
-    <view x="850" wrappingAllowedX="false" y="10" frameRate="30.0" minPycor="-40" height="653" showTickCounter="true" patchSize="8.0" fontSize="10" wrappingAllowedY="false" width="653" tickCounterLabel="ticks" maxPycor="40" updateMode="0" maxPxcor="40" minPxcor="-40"></view>
-    <button x="30" y="25" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">setup
-</button>
-    <button x="40" y="95" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
-    <slider x="85" step="1" y="200" max="300" width="250" display="initial-pop" height="50" min="50" direction="Horizontal" default="100.0" variable="initial-pop"></slider>
-    <slider x="80" step="10" y="285" max="500" width="250" display="epoch-duration" height="50" min="100" direction="Horizontal" default="300.0" variable="epoch-duration"></slider>
-    <monitor x="10" precision="0" y="450" height="60" fontSize="11" width="100">epoch-ticks</monitor>
-    <monitor x="10" precision="0" y="380" height="60" fontSize="11" width="100">generation</monitor>
-    <monitor x="15" precision="0" y="520" height="60" fontSize="11" width="100">count turtles</monitor>
-    <monitor x="190" precision="0" y="380" height="60" fontSize="11" width="100" display="secure">count turtles with [color = green]</monitor>
-    <monitor x="195" precision="17" y="455" height="60" fontSize="11" width="100" display="fearful">count turtles with [color = red]</monitor>
-    <monitor x="195" precision="17" y="525" height="60" fontSize="11" width="100" display="avoidant">count turtles with [color = yellow]</monitor>
-    <monitor x="195" precision="17" y="590" height="60" fontSize="11" width="100" display="anxiety">count turtles with [color = blue]</monitor>
-    <plot x="390" autoPlotX="true" yMax="1.0" autoPlotY="true" yAxis="Avoidance" y="70" xMin="-1.0" height="410" legend="false" xMax="1.0" yMin="-1.0" width="425" xAxis="Anxiety" display="Attachment 2D Distribution">
+    <view x="955" wrappingAllowedX="false" y="45" frameRate="30.0" minPycor="-40" height="653" showTickCounter="true" patchSize="8.0" fontSize="10" wrappingAllowedY="false" width="653" tickCounterLabel="ticks" maxPycor="40" updateMode="0" maxPxcor="40" minPxcor="-40"></view>
+    <slider x="155" step="10" y="135" max="500" width="250" display="max_generations" height="50" min="0" direction="Horizontal" default="10.0" variable="max_generations"></slider>
+    <slider x="155" step="1" y="190" max="300" width="250" display="initial-pop" height="50" min="50" direction="Horizontal" default="110.0" variable="initial-pop"></slider>
+    <slider x="155" step="10" y="245" max="500" width="250" display="epoch-duration" height="50" min="100" direction="Horizontal" default="300.0" variable="epoch-duration"></slider>
+    <monitor x="65" precision="0" y="440" height="60" fontSize="11" width="100">epoch-ticks</monitor>
+    <monitor x="65" precision="0" y="505" height="60" fontSize="11" width="100">count turtles</monitor>
+    <monitor x="65" precision="0" y="375" height="60" fontSize="11" width="100">generation</monitor>
+    <monitor x="180" precision="0" y="375" height="60" fontSize="11" width="100" display="secure">count turtles with [color = green]</monitor>
+    <monitor x="180" precision="17" y="440" height="60" fontSize="11" width="100" display="fearful">count turtles with [color = red]</monitor>
+    <monitor x="180" precision="17" y="505" height="60" fontSize="11" width="100" display="avoidant">count turtles with [color = yellow]</monitor>
+    <monitor x="180" precision="17" y="570" height="60" fontSize="11" width="100" display="anxiety">count turtles with [color = blue]</monitor>
+    <plot x="445" autoPlotX="true" yMax="1.0" autoPlotY="true" yAxis="Avoidance" y="90" xMin="-1.0" height="410" legend="false" xMax="1.0" yMin="-1.0" width="425" xAxis="Anxiety" display="Attachment 2D Distribution">
       <setup></setup>
       <update>clear-plot
 set-plot-background-color black</update>
@@ -280,7 +279,9 @@ set-plot-background-color black</update>
    ]</update>
       </pen>
     </plot>
-    <slider x="55" step="10" y="135" max="500" width="250" display="max_generations" height="50" min="0" direction="Horizontal" default="100.0" variable="max_generations"></slider>
+    <button x="155" y="40" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">setup
+</button>
+    <button x="155" y="85" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
   </widgets>
   <info>## WHAT IS IT?
 
@@ -1156,8 +1157,6 @@ set-plot-background-color black</update>
     <experiment name="disaster_duration_test" repetitions="10" sequentialRunOrder="true" runMetricsEveryStep="false">
       <setup>setup</setup>
       <go>go</go>
-      <postRun>export-plot "Attachment 2D Distribution" (word "plot_run_" behaviorspace-run-number ".png")
-export-view (word "world_run_" behaviorspace-run-number ".png")</postRun>
       <exitCondition><![CDATA[generation > max_generations or count turtles = 0]]></exitCondition>
       <runMetricsCondition>ticks mod 10 = 0</runMetricsCondition>
       <metrics>
@@ -1165,15 +1164,14 @@ export-view (word "world_run_" behaviorspace-run-number ".png")</postRun>
         <metric>count turtles with [color = yellow]</metric>
         <metric>count turtles with [color = blue]</metric>
         <metric>count turtles with [color = red]</metric>
+        <metric>generation</metric>
       </metrics>
       <constants>
         <enumeratedValueSet variable="initial-pop">
           <value value="100"></value>
         </enumeratedValueSet>
         <enumeratedValueSet variable="epoch-duration">
-          <value value="100"></value>
           <value value="50"></value>
-          <value value="400"></value>
         </enumeratedValueSet>
       </constants>
     </experiment>
