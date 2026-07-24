@@ -175,3 +175,6 @@ Yes, this is based on physiological responses. Individuals with high anxiety typ
 
 Q7:You set the initial genotype range to a uniform distribution [-1, 1]. But in reality, about 50% of people are Secure. How would a realistic initial distribution affect the results?
 That is a very insightful point. We used a uniform distribution to give every trait an equal starting point for this proof-of-concept. If we start with a realistic 50% secure population, I expect the secure type to dominate even longer in general situations. However, during extreme disaster epochs, we would still see the anxious or avoidant types spike in survival rates. Testing this realistic distribution is definitely on my to-do list.
+
+
+
