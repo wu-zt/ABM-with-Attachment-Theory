@@ -6,22 +6,31 @@
 ;; ============================================================================
 
 globals [
-  disaster-radius   ; Used for circular disaster modes
-  epoch-ticks       ; Ticks elapsed in the current survival countdown
-  generation        ; Current evolutionary generation
+  disaster-radius
+  epoch-ticks
+  generation
 ]
+
+;; 定义亲属/照料连接
+undirected-link-breed [ kinships kinship ]
 
 turtles-own [
-  ;; --- Genotype (Continuous values bounded in [-1.0, 1.0]) ---
-  anxiety           ; X-axis: Attachment Anxiety
-  avoidance         ; Y-axis: Attachment Avoidance
-
-  ;; --- Phenotype & Physical State ---
-  vision-radius     ; Sensory range (positively correlated with anxiety)
-  social-distance   ; Interpersonal threshold (correlated with avoidance)
-  energy            ; Metabolic energy (agent dies if depleted)
-  state             ; Finite State Machine: "wandering" or "fleeing"
+  ;; --- 基因型与状态（保留你原有的变量） ---
+  anxiety
+  avoidance
+  vision-radius
+  social-distance
+  energy
+  state
+  
+  ;; --- 新增：社会角色与网络属性 ---
+  role              ; "adult" (照料者) 或 "child" (被照料者)
+  family-id         ; 所属家庭/集群编号
 ]
+
+;; =========================================
+;; Setup & Initialization
+;; =========================================
 
 ;; =========================================
 ;; Setup & Initialization
@@ -40,8 +49,91 @@ to setup
     update-phenotypes
   ]
   
+  ;; 构建社会拓扑关系网络
+  setup-social-network
+  
   reset-epoch
   reset-ticks
+end
+
+to setup-social-network
+  ;; 初始化角色（例如 70% 成人照料者，30% 需照料儿童）
+  ask turtles [
+    ifelse random-float 1.0 < 0.3 [
+      set role "child"
+      set size 1.0
+    ] [
+      set role "adult"
+      set size 1.6
+    ]
+  ]
+
+  ;; ========================================================
+  ;; 模式 A: 传统乡村结构 (差序格局/多重照料)
+  ;; 特征: 形成 5-8 人的宗族大集群，网状互联，儿童有多重照料者
+  ;; ========================================================
+  if society-type = "Traditional-Rural" [
+    let cluster-id 0
+    let cluster-size 8
+    let unassigned turtles
+    
+    while [any? unassigned] [
+      let this-cluster up-to-n-of cluster-size unassigned
+      ask this-cluster [
+        set family-id cluster-id
+      ]
+      ;; 集群内部全连接或高密度连接 (小世界/亲族网络)
+      ask this-cluster [
+        create-kinships-with other this-cluster
+      ]
+      set unassigned unassigned with [family-id = nobody]
+      set cluster-id cluster-id + 1
+    ]
+  ]
+
+  ;; ========================================================
+  ;; 模式 B: 现代城市核心家庭 (Nuclear Family)
+  ;; 特征: 严格的 3-4 人封闭单元 (2 成人 + 1-2 儿童)，家庭之间无连接
+  ;; ========================================================
+  if society-type = "Modern-Urban" [
+    let fam-id 0
+    let unassigned-adults turtles with [role = "adult"]
+    let unassigned-children turtles with [role = "child"]
+    
+    while [any? unassigned-adults and any? unassigned-children] [
+      let p1 one-of unassigned-adults
+      let p2 one-of (unassigned-adults with [self != p1])
+      let c1 one-of unassigned-children
+      
+      let fam (turtle-set p1 p2 c1)
+      ask fam [ set family-id fam-id ]
+      
+      ;; 父母之间建立连接，父母分别与孩子建立连接
+      if p1 != nobody and p2 != nobody [ ask p1 [ create-kinship-with p2 ] ]
+      if p1 != nobody and c1 != nobody [ ask p1 [ create-kinship-with c1 ] ]
+      if p2 != nobody and c1 != nobody [ ask p2 [ create-kinship-with c1 ] ]
+      
+      set unassigned-adults unassigned-adults with [family-id = nobody]
+      set unassigned-children unassigned-children with [family-id = nobody]
+      set fam-id fam-id + 1
+    ]
+  ]
+
+  ;; ========================================================
+  ;; 模式 C: 留守/边缘化过渡结构 (Left-Behind / Atomized)
+  ;; 特征: 照料者严重缺失 (外出务工)，儿童之间微弱抱团，整体呈原子化
+  ;; ========================================================
+  if society-type = "Left-Behind" [
+    ;; 只给极少数成年人与儿童保留连接，大多数个体独立无依
+    ask turtles with [role = "child"] [
+      if random-float 1.0 < 0.25 [  ;; 仅 25% 儿童有微弱支持连边
+        let nearby-friend one-of (other turtles in-radius 6)
+        if nearby-friend != nobody [
+          create-kinship-with nearby-friend
+        ]
+      ]
+    ]
+  ]
 end
 
 to initialize-attachment-genes
@@ -120,29 +212,10 @@ to go
     reset-epoch
     set generation generation + 1
   ] [
+    ;; 1. 更新灾难环境状态
     update-disaster
     
-    ;; 在 update-disaster 模块中限制最大扩散范围
-    if disaster-type = "Expanding-Circle" [
-      if disaster-radius < (max-pxcor - 8) [   ; 比如留出外围 8 格缓冲带
-        set disaster-radius disaster-radius + 0.15
-      ]
-      ask patches with [distancexy 0 0 <= disaster-radius] [
-        set pcolor red - 2
-      ]
-    ]
-    
-    ;; 限制全图最大灾难覆盖比例，或者限制爆发总次数
-    if disaster-type = "Random-Outbreaks" [
-      ;; 只有当受灾区域少于全图的 40% 时，才继续生成或扩散新的灾害
-      if (count patches with [pcolor = red - 2] < 0.40 * count patches) [
-        if ticks mod 15 = 0 [
-          ask up-to-n-of 2 patches with [pcolor = black] [
-            set pcolor red - 2
-          ]
-        ]
-      ]
-    ]
+    ;; 2. Agent 决策、行为、代谢与存活检测
     ask turtles [
       if energy > 0 [
         decide-action
@@ -177,15 +250,20 @@ to update-disaster
   let max-radius (max-pxcor * 1.5)
   let speed max-radius / epoch-duration
 
-  ; 1. 传统扩散圈 (从中心向四周扩散)
+  ; 1. 传统扩散圈 (限制最大扩散半径，留出外围 8 格安全缓冲区)
   if disaster-type = "Expanding-Circle" [
-    set disaster-radius epoch-ticks * speed
+    let target-r epoch-ticks * speed
+    let safe-limit (max-pxcor - 8)
+    if target-r > safe-limit [
+      set target-r safe-limit
+    ]
+    set disaster-radius target-r
     ask patches with [distancexy 0 0 <= disaster-radius] [
       set pcolor red - 2
     ]
   ]
   
-  ; 2. 平推式火墙/海啸 (从左向右横扫)
+  ; 2. 平推式火墙 (从左向右横扫)
   if disaster-type = "Sweeping-Wall" [
     let wall-speed (max-pxcor - min-pxcor) / epoch-duration
     let current-wall-x min-pxcor + (epoch-ticks * wall-speed)
@@ -194,25 +272,28 @@ to update-disaster
     ]
   ]
   
-  ; ; 3. 随机多点爆发 (陨石雨/瘟疫)
+  ; 3. 随机多点爆发 (上限 35% 面积，带自然熄灭/降温机制)
   if disaster-type = "Random-Outbreaks" [
-    if epoch-ticks mod 10 = 0 [
-      ; 将 n-of 改为 up-to-n-of
-      ask up-to-n-of 3 patches with [pcolor = black] [
-        set pcolor red - 2
+    ;; 当总受灾面积小于全图 35% 时，每 10 ticks 产生新增火点
+    if (count patches with [pcolor = red - 2] < 0.35 * count patches) [
+      if epoch-ticks mod 10 = 0 [
+        ask up-to-n-of 3 patches with [pcolor = black] [
+          set pcolor red - 2
+        ]
       ]
     ]
-    ask patches with [pcolor = red - 2] [
-      ask neighbors [
-        if random-float 100 < 2 [ set pcolor red - 2 ]
+    ;; 自然熄灭机制：每 15 ticks 让少量火区熄灭复原，维持局部逃生微通道
+    if epoch-ticks mod 15 = 0 [
+      ask up-to-n-of 2 patches with [pcolor = red - 2] [
+        set pcolor black
       ]
     ]
   ]
   
-  ; 4. 大逃杀缩圈 (从四周向中心逼近)
+  ; 4. 大逃杀缩圈 (中心保留最小半径 6 的安全核心区)
   if disaster-type = "Shrinking-Zone" [
     let safe-radius max-radius - (epoch-ticks * speed)
-    if safe-radius < 0 [ set safe-radius 0 ]
+    if safe-radius < 6 [ set safe-radius 6 ]
     ask patches with [distancexy 0 0 > safe-radius] [
       set pcolor red - 2
     ]
@@ -231,6 +312,7 @@ to decide-action
     set state "wandering"
   ]
 end
+
 
 to move
   ifelse state = "wandering" [
@@ -272,6 +354,21 @@ to move
       ]
     ]
     
+    ; Vector 3: Attachment Proximity Seeking (向最近的亲属/照料者靠拢)
+    let kin-partners link-neighbors in-radius vision-radius
+    if any? kin-partners [
+      let closest-kin min-one-of kin-partners [distance myself]
+      let kin-dx [xcor] of closest-kin - xcor
+      let kin-dy [ycor] of closest-kin - ycor
+      let kin-dist distance closest-kin
+      
+      if kin-dist > 1.0 [
+        let attach-weight (1.0 - avoidance) * 0.8
+        set force-x force-x + ((kin-dx / kin-dist) * attach-weight)
+        set force-y force-y + ((kin-dy / kin-dist) * attach-weight)
+      ]
+    ]
+    
     if force-x != 0 or force-y != 0 [
       facexy (xcor + force-x) (ycor + force-y)
     ]
@@ -282,6 +379,15 @@ end
 to consume-energy
   let metabolism 0.2
   let anxiety-cost ((anxiety + 1) * 0.1)
+  
+  ;; 检查身边 3 格内是否有连接的亲属存在
+  let has-support-nearby any? (link-neighbors in-radius 3)
+  
+  ;; 若身边有亲属支持，焦虑能耗降低 50%（社会安全基地效应）
+  if has-support-nearby [
+    set anxiety-cost anxiety-cost * 0.5
+  ]
+  
   set metabolism metabolism + anxiety-cost
   
   if state = "fleeing" [
@@ -291,7 +397,13 @@ to consume-energy
 end
 
 to check-death
-  if pcolor = red - 2 or energy <= 0 [
+  ;; 踩在危险地块上每 tick 受到额外高额灼伤扣能
+  if pcolor = red - 2 [
+    set energy energy - 5.0
+  ]
+  
+  ;; 能量耗尽死亡
+  if energy <= 0 [
     die
   ]
 end
@@ -360,6 +472,11 @@ set-plot-background-color black</update>
       <choice type="string" value="Empirical-Real"></choice>
       <choice type="string" value="Gaussian-Continuous"></choice>
       <choice type="string" value="Uniform-25%"></choice>
+    </chooser>
+    <chooser x="455" y="635" height="60" variable="society-type" current="0" width="250" display="society-type">
+      <choice type="string" value="Traditional-Rural"></choice>
+      <choice type="string" value="Modern-Urban"></choice>
+      <choice type="string" value="Left-Behind"></choice>
     </chooser>
   </widgets>
   <info>## WHAT IS IT?
