@@ -1,40 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.4" snapToGrid="true">
-  <code><![CDATA[globals [
-  disaster-radius   ; The current radius of the circular disaster
+  <code><![CDATA[;; ============================================================================
+;; Attachment Dynamics in Disaster Survival (NetLogo Model)
+;; Integrated with Empirical Norms & Multi-Disaster Modes
+;; ============================================================================
+
+globals [
+  disaster-radius   ; Used for circular disaster modes
   epoch-ticks       ; Ticks elapsed in the current survival countdown
   generation        ; Current evolutionary generation
 ]
 
 turtles-own [
-  ;; --- Genotype (Continuous values from -1.0 to 1.0) ---
+  ;; --- Genotype (Continuous values bounded in [-1.0, 1.0]) ---
   anxiety           ; X-axis: Attachment Anxiety
   avoidance         ; Y-axis: Attachment Avoidance
 
-  ;; --- Phenotype ---
-  vision-radius     ; Sensory range, positively correlated with anxiety
-  social-distance   ; Interpersonal space threshold, correlated with avoidance
-  energy            ; Metabolic resource (agent dies if it reaches 0)
+  ;; --- Phenotype & Physical State ---
+  vision-radius     ; Sensory range (positively correlated with anxiety)
+  social-distance   ; Interpersonal threshold (correlated with avoidance)
+  energy            ; Metabolic energy (agent dies if depleted)
   state             ; Finite State Machine: "wandering" or "fleeing"
 ]
 
 ;; =========================================
 ;; Setup & Initialization
 ;; =========================================
+
 to setup
   clear-all
   set generation 1
 
-  ; Generate the initial population
   create-turtles initial-pop [
     setxy random-xcor random-ycor
     set shape "person"
     set size 1.5
     
-    ; Initialize genes with random float values between -1.0 and 1.0
-    set anxiety (random-float 2.0) - 1.0
-    set avoidance (random-float 2.0) - 1.0
-    
+    initialize-attachment-genes
     update-phenotypes
   ]
   
@@ -42,19 +44,56 @@ to setup
   reset-ticks
 end
 
-;; Refresh physical attributes based on genetic coordinates
+to initialize-attachment-genes
+  if init-mode = "Empirical-Real" [
+    let roll random-float 100
+    ifelse roll < 60 [
+      set anxiety (-1.0 * random-float 1.0)
+      set avoidance (-1.0 * random-float 1.0)
+    ] [
+      ifelse roll < 75 [
+        set anxiety (-1.0 * random-float 1.0)
+        set avoidance random-float 1.0
+      ] [
+        ifelse roll < 90 [
+          set anxiety random-float 1.0
+          set avoidance (-1.0 * random-float 1.0)
+        ] [
+          set anxiety random-float 1.0
+          set avoidance random-float 1.0
+        ]
+      ]
+    ]
+  ]
+
+  if init-mode = "Gaussian-Continuous" [
+    set anxiety random-normal -0.25 0.40
+    set avoidance random-normal -0.25 0.40
+  ]
+
+  if init-mode = "Uniform-25%" [
+    set anxiety (random-float 2.0) - 1.0
+    set avoidance (random-float 2.0) - 1.0
+  ]
+
+  clamp-genotype
+end
+
+to clamp-genotype
+  if anxiety > 1.0 [ set anxiety 1.0 ]
+  if anxiety < -1.0 [ set anxiety -1.0 ]
+  if avoidance > 1.0 [ set avoidance 1.0 ]
+  if avoidance < -1.0 [ set avoidance -1.0 ]
+end
+
 to update-phenotypes
-  ; 1. Vision-radius: Base vision is 5. Max anxiety (1.0) gives 8, Min anxiety (-1.0) gives 2.
   set vision-radius 5 + (anxiety * 3)
-  
-  ; 2. Reset energy to the same initial value for the control variable
   set energy 100
 
-  ; 3. Assign colors based on the four attachment quadrants for visualization
-  if anxiety > 0 and avoidance > 0 [ set color red ]       ; Fearful-Avoidant
-  if anxiety < 0 and avoidance > 0 [ set color yellow ]    ; Dismissing-Avoidant
   if anxiety < 0 and avoidance < 0 [ set color green ]     ; Secure
-  if anxiety > 0 and avoidance < 0 [ set color blue ]      ; Preoccupied
+  if anxiety < 0 and avoidance > 0 [ set color yellow ]    ; Dismissing-Avoidant
+  if anxiety > 0 and avoidance < 0 [ set color blue ]      ; Preoccupied-Anxious
+  if anxiety > 0 and avoidance > 0 [ set color red ]       ; Fearful-Avoidant
 end
 
 ;; =========================================
@@ -62,57 +101,71 @@ end
 ;; =========================================
 
 to go
-  ; End of the epoch: Reproduce survivors and reset for the next generation
   ifelse epoch-ticks >= epoch-duration [
     
-    ; --- before next generation, print the number of each population ---
     let sec count turtles with [color = green]
     let dis count turtles with [color = yellow]
     let pre count turtles with [color = blue]
     let fea count turtles with [color = red]
     
     print "===================================="
-    print (word "End of Gen " generation " | Total Survivors: " count turtles)
+    print (word "End of Gen " generation " | Survivors: " count turtles " / " initial-pop)
     print (word "Secure (Green): " sec)
-    print (word "Avoidant (Yellow): " dis)
-    print (word "Anxiety (Blue): " pre)
+    print (word "Dismissing (Yellow): " dis)
+    print (word "Preoccupied (Blue): " pre)
     print (word "Fearful (Red): " fea)
     print "===================================="
-    ; ---------------------------------------------
 
     reproduce
     reset-epoch
     set generation generation + 1
-  ][
-
-  ; 1. Update environmental threat
-  update-disaster
-  
-  ; 2. Execute agent behaviors
-  ask turtles [
-    if energy > 0 [
-      decide-action
-      move
-      consume-energy
-      check-death
+  ] [
+    update-disaster
+    
+    ;; 在 update-disaster 模块中限制最大扩散范围
+    if disaster-type = "Expanding-Circle" [
+      if disaster-radius < (max-pxcor - 8) [   ; 比如留出外围 8 格缓冲带
+        set disaster-radius disaster-radius + 0.15
+      ]
+      ask patches with [distancexy 0 0 <= disaster-radius] [
+        set pcolor red - 2
+      ]
     ]
+    
+    ;; 限制全图最大灾难覆盖比例，或者限制爆发总次数
+    if disaster-type = "Random-Outbreaks" [
+      ;; 只有当受灾区域少于全图的 40% 时，才继续生成或扩散新的灾害
+      if (count patches with [pcolor = red - 2] < 0.40 * count patches) [
+        if ticks mod 15 = 0 [
+          ask up-to-n-of 2 patches with [pcolor = black] [
+            set pcolor red - 2
+          ]
+        ]
+      ]
+    ]
+    ask turtles [
+      if energy > 0 [
+        decide-action
+        move
+        consume-energy
+        check-death
+      ]
+    ]
+    
+    set epoch-ticks epoch-ticks + 1
   ]
-  
-  ; 3. time forward
-  set epoch-ticks epoch-ticks + 1
-]
   tick
 end
 
 ;; =========================================
-;; Environment Module (Circular Disaster)
+;; Environment Module (Multi-Disaster System)
 ;; =========================================
+
 to reset-epoch
   set epoch-ticks 0
   set disaster-radius 0
   ask patches [ set pcolor black ]
   
-  ; Reset states and randomize positions for survivors and newborns
   ask turtles [
     setxy random-xcor random-ycor
     set energy 100
@@ -121,23 +174,56 @@ to reset-epoch
 end
 
 to update-disaster
-  ; The disaster originates from the center (0,0) and expands radially.
-  ; Adjust the max-radius so it covers a lethal portion of the map but leaves the corners safe.
-  let max-radius (max-pxcor * 1.1) 
+  let max-radius (max-pxcor * 1.5)
   let speed max-radius / epoch-duration
-  set disaster-radius epoch-ticks * speed
+
+  ; 1. 传统扩散圈 (从中心向四周扩散)
+  if disaster-type = "Expanding-Circle" [
+    set disaster-radius epoch-ticks * speed
+    ask patches with [distancexy 0 0 <= disaster-radius] [
+      set pcolor red - 2
+    ]
+  ]
   
-  ; Any patch within the current radius turns into the disaster zone
-  ask patches with [distancexy 0 0 <= disaster-radius] [
-    set pcolor red - 2 ; Dark red represents the lethal disaster zone
+  ; 2. 平推式火墙/海啸 (从左向右横扫)
+  if disaster-type = "Sweeping-Wall" [
+    let wall-speed (max-pxcor - min-pxcor) / epoch-duration
+    let current-wall-x min-pxcor + (epoch-ticks * wall-speed)
+    ask patches with [pxcor <= current-wall-x] [
+      set pcolor red - 2
+    ]
+  ]
+  
+  ; ; 3. 随机多点爆发 (陨石雨/瘟疫)
+  if disaster-type = "Random-Outbreaks" [
+    if epoch-ticks mod 10 = 0 [
+      ; 将 n-of 改为 up-to-n-of
+      ask up-to-n-of 3 patches with [pcolor = black] [
+        set pcolor red - 2
+      ]
+    ]
+    ask patches with [pcolor = red - 2] [
+      ask neighbors [
+        if random-float 100 < 2 [ set pcolor red - 2 ]
+      ]
+    ]
+  ]
+  
+  ; 4. 大逃杀缩圈 (从四周向中心逼近)
+  if disaster-type = "Shrinking-Zone" [
+    let safe-radius max-radius - (epoch-ticks * speed)
+    if safe-radius < 0 [ set safe-radius 0 ]
+    ask patches with [distancexy 0 0 > safe-radius] [
+      set pcolor red - 2
+    ]
   ]
 end
 
 ;; =========================================
-;; Interaction & Movement Module
+;; Intelligent Movement & Stress Response
 ;; =========================================
+
 to decide-action
-  ; Check if any disaster patches are within the agent's sensory range
   let dangerous-patches patches in-radius vision-radius with [pcolor = red - 2]
   ifelse any? dangerous-patches [
     set state "fleeing"
@@ -148,24 +234,23 @@ end
 
 to move
   ifelse state = "wandering" [
-    ; Normal baseline movement (random walk)
     rt random-float 40 - 20
-    ; Ensure agents don't crash into the new solid map boundaries
     if can-move? 0.2 [ fd 0.2 ]
   ] [
-    ; Fleeing mechanism driven by vector addition
-    
-    ; Vector 1: Flee radially away from the center of the disaster (0, 0)
-    let fire-dx xcor
-    let fire-dy ycor
-    let fire-dist distancexy 0 0
-    
     let force-x 0
     let force-y 0
     
-    if fire-dist > 0 [
-      set force-x fire-dx / fire-dist
-      set force-y fire-dy / fire-dist
+    ; Vector 1: Intelligent Evasion (Flee from the nearest threat in vision)
+    let threat min-one-of (patches in-radius vision-radius with [pcolor = red - 2]) [distance myself]
+    if threat != nobody [
+      let fire-dx xcor - [pxcor] of threat
+      let fire-dy ycor - [pycor] of threat
+      let fire-dist distance threat
+      
+      if fire-dist > 0 [
+        set force-x fire-dx / fire-dist
+        set force-y fire-dy / fire-dist
+      ]
     ]
     
     ; Vector 2: Social force (driven by Avoidance)
@@ -181,74 +266,57 @@ to move
       if dist > 0 [
         let nx diff-x / dist
         let ny diff-y / dist
-        
-        ; Map avoidance to social force: Positive (Separation), Negative (Cohesion)
         let social-weight 1.2
         set force-x force-x + (nx * avoidance * social-weight)
         set force-y force-y + (ny * avoidance * social-weight)
       ]
     ]
     
-    ; Turn towards the synthesized vector and sprint
-    facexy (xcor + force-x) (ycor + force-y)
-    
-    ; Safe movement: only move if they haven't hit the map boundary
+    if force-x != 0 or force-y != 0 [
+      facexy (xcor + force-x) (ycor + force-y)
+    ]
     if can-move? 0.6 [ fd 0.6 ]
   ]
 end
 
 to consume-energy
-  ; Base metabolic rate
   let metabolism 0.2
-  
-  ; Cost of hyper-vigilance: Higher anxiety leads to faster energy decay
   let anxiety-cost ((anxiety + 1) * 0.1)
   set metabolism metabolism + anxiety-cost
   
-  ; High physiological cost during panic/fleeing state
   if state = "fleeing" [
     set metabolism metabolism * 1.5
   ]
-  
   set energy energy - metabolism
 end
 
 to check-death
-  ; Agents die if engulfed by the disaster or if energy is completely depleted
   if pcolor = red - 2 or energy <= 0 [
     die
   ]
 end
 
 ;; =========================================
-;; Evolution Strategy (Asexual Reproduction)
+;; Evolutionary Strategy & Inheritance
 ;; =========================================
+
 to reproduce
   let survivors count turtles
   if survivors = 0 [
-    print "Extinction: All agents died!"
+    print "Extinction Event: No agents survived!"
     stop
   ]
   
-  ; Calculate the number of offspring required to restore the population capacity
   let offspring-needed initial-pop - survivors
   
   if offspring-needed > 0 [
-    ; Loop 'offspring-needed' times, each time picking ONE random survivor to clone
     repeat offspring-needed [
       ask one-of turtles [
         hatch 1 [
-          ; --- Genetic Mutation ---
-          ; Introduce a small random Gaussian-like perturbation [-0.1, 0.1] to both coordinates
           set anxiety anxiety + (random-float 0.2 - 0.1)
           set avoidance avoidance + (random-float 0.2 - 0.1)
           
-          ; Clamp values to ensure genes stay within the [-1.0, 1.0] domain
-          if anxiety > 1.0 [ set anxiety 1.0 ]
-          if anxiety < -1.0 [ set anxiety -1.0 ]
-          if avoidance > 1.0 [ set avoidance 1.0 ]
-          if avoidance < -1.0 [ set avoidance -1.0 ]
-          
+          clamp-genotype
           update-phenotypes
         ]
       ]
@@ -257,7 +325,7 @@ to reproduce
 end]]></code>
   <widgets>
     <view x="955" wrappingAllowedX="false" y="45" frameRate="30.0" minPycor="-40" height="653" showTickCounter="true" patchSize="8.0" fontSize="10" wrappingAllowedY="false" width="653" tickCounterLabel="ticks" maxPycor="40" updateMode="0" maxPxcor="40" minPxcor="-40"></view>
-    <slider x="155" step="10" y="135" max="500" width="250" display="max_generations" height="50" min="0" direction="Horizontal" default="10.0" variable="max_generations"></slider>
+    <slider x="155" step="10" y="135" max="500" width="250" display="max_generations" height="50" min="0" direction="Horizontal" default="260.0" variable="max_generations"></slider>
     <slider x="155" step="1" y="190" max="300" width="250" display="initial-pop" height="50" min="50" direction="Horizontal" default="110.0" variable="initial-pop"></slider>
     <slider x="155" step="10" y="245" max="500" width="250" display="epoch-duration" height="50" min="100" direction="Horizontal" default="300.0" variable="epoch-duration"></slider>
     <monitor x="65" precision="0" y="440" height="60" fontSize="11" width="100">epoch-ticks</monitor>
@@ -282,6 +350,17 @@ set-plot-background-color black</update>
     <button x="155" y="40" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">setup
 </button>
     <button x="155" y="85" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
+    <chooser x="155" y="300" height="60" variable="disaster-type" current="0" width="250" display="disaster-type">
+      <choice type="string" value="Expanding-Circle"></choice>
+      <choice type="string" value="Sweeping-Wall"></choice>
+      <choice type="string" value="Random-Outbreaks"></choice>
+      <choice type="string" value="Shrinking-Zone"></choice>
+    </chooser>
+    <chooser x="165" y="640" height="60" variable="init-mode" current="0" width="250" display="init-mode">
+      <choice type="string" value="Empirical-Real"></choice>
+      <choice type="string" value="Gaussian-Continuous"></choice>
+      <choice type="string" value="Uniform-25%"></choice>
+    </chooser>
   </widgets>
   <info>## WHAT IS IT?
 
@@ -1172,6 +1251,37 @@ set-plot-background-color black</update>
         </enumeratedValueSet>
         <enumeratedValueSet variable="epoch-duration">
           <value value="50"></value>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="Disaster_Stress_Test" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false">
+      <setup>setup</setup>
+      <go>go</go>
+      <exitCondition><![CDATA[ticks >= 500 or not any? turtles with [energy > 0]]]></exitCondition>
+      <metrics>
+        <metric>count turtles</metric>
+        <metric><![CDATA[count turtles with [energy > 0]]]></metric>
+        <metric><![CDATA[ifelse-value (any? turtles with [energy > 0]) [mean [energy] of turtles with [energy > 0]] [0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety < 0 and avoidance < 0 and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety > 0 and avoidance < 0 and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety < 0 and avoidance > 0 and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety > 0 and avoidance > 0 and energy > 0]]]></metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="init-mode">
+          <value value="&quot;Empirical-Real&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="epoch-duration">
+          <value value="300"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="disaster-type">
+          <value value="&quot;Expanding-Circle&quot;"></value>
+          <value value="&quot;Sweeping-Wall&quot;"></value>
+          <value value="&quot;Random-Outbreaks&quot;"></value>
+          <value value="&quot;Shrinking-Zone&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-pop">
+          <value value="110"></value>
         </enumeratedValueSet>
       </constants>
     </experiment>
