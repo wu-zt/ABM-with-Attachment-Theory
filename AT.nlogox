@@ -473,7 +473,7 @@ set-plot-background-color black</update>
       <choice type="string" value="Gaussian-Continuous"></choice>
       <choice type="string" value="Uniform-25%"></choice>
     </chooser>
-    <chooser x="455" y="635" height="60" variable="society-type" current="0" width="250" display="society-type">
+    <chooser x="455" y="635" height="60" variable="society-type" current="2" width="250" display="society-type">
       <choice type="string" value="Traditional-Rural"></choice>
       <choice type="string" value="Modern-Urban"></choice>
       <choice type="string" value="Left-Behind"></choice>
@@ -1396,6 +1396,43 @@ set-plot-background-color black</update>
           <value value="&quot;Sweeping-Wall&quot;"></value>
           <value value="&quot;Random-Outbreaks&quot;"></value>
           <value value="&quot;Shrinking-Zone&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-pop">
+          <value value="110"></value>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="Society_Disaster_Experiment" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="true" timeLimit="500">
+      <setup>setup</setup>
+      <go>go</go>
+      <metrics>
+        <metric>count turtles</metric>
+        <metric><![CDATA[count turtles with [energy > 0]]]></metric>
+        <metric><![CDATA[ifelse-value (any? turtles with [energy > 0]) [mean [energy] of turtles with [energy > 0]] [0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety < 0 and avoidance < 0 and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety > 0 and avoidance < 0 and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety < 0 and avoidance > 0 and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [anxiety > 0 and avoidance > 0 and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [role = "child" and energy > 0]]]></metric>
+        <metric><![CDATA[count turtles with [role = "adult" and energy > 0]]]></metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="society-type">
+          <value value="&quot;Traditional-Rural&quot;"></value>
+          <value value="&quot;Modern-Urban&quot;"></value>
+          <value value="&quot;Left-Behind&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="disaster-type">
+          <value value="&quot;Expanding-Circle&quot;"></value>
+          <value value="&quot;Sweeping-Wall&quot;"></value>
+          <value value="&quot;Random-Outbreaks&quot;"></value>
+          <value value="&quot;Shrinking-Zone&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="init-mode">
+          <value value="&quot;Empirical-Real&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="epoch-duration">
+          <value value="500"></value>
         </enumeratedValueSet>
         <enumeratedValueSet variable="initial-pop">
           <value value="110"></value>
