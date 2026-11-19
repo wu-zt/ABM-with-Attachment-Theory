@@ -1,36 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.4" snapToGrid="true">
   <code><![CDATA[;; ============================================================================
-;; Attachment Dynamics in Disaster Survival (NetLogo Model)
-;; Integrated with Empirical Norms & Multi-Disaster Modes
+;; Attachment Dynamics in Disaster Survival (NetLogo Model - Complete Version)
 ;; ============================================================================
 
 globals [
   disaster-radius
   epoch-ticks
   generation
+  deaths-by-burn         ; 因踩中火区灼伤致死人数
+  deaths-by-exhaustion   ; 因能量/焦虑代谢耗尽致死人数
 ]
 
 ;; 定义亲属/照料连接
 undirected-link-breed [ kinships kinship ]
 
 turtles-own [
-  ;; --- 基因型与状态（保留你原有的变量） ---
   anxiety
   avoidance
   vision-radius
   social-distance
   energy
   state
-  
-  ;; --- 新增：社会角色与网络属性 ---
   role              ; "adult" (照料者) 或 "child" (被照料者)
   family-id         ; 所属家庭/集群编号
 ]
-
-;; =========================================
-;; Setup & Initialization
-;; =========================================
 
 ;; =========================================
 ;; Setup & Initialization
@@ -44,20 +38,21 @@ to setup
     setxy random-xcor random-ycor
     set shape "person"
     set size 1.5
+    set family-id nobody
     
     initialize-attachment-genes
     update-phenotypes
   ]
   
-  ;; 构建社会拓扑关系网络
   setup-social-network
-  
   reset-epoch
   reset-ticks
 end
 
 to setup-social-network
-  ;; 初始化角色（例如 70% 成人照料者，30% 需照料儿童）
+  ask kinships [ die ]
+  ask turtles [ set family-id nobody ]
+
   ask turtles [
     ifelse random-float 1.0 < 0.3 [
       set role "child"
@@ -68,10 +63,7 @@ to setup-social-network
     ]
   ]
 
-  ;; ========================================================
-  ;; 模式 A: 传统乡村结构 (差序格局/多重照料)
-  ;; 特征: 形成 5-8 人的宗族大集群，网状互联，儿童有多重照料者
-  ;; ========================================================
+  ;; 模式 A: 传统乡村结构 (8人宗族大集群，多重照料)
   if society-type = "Traditional-Rural" [
     let cluster-id 0
     let cluster-size 8
@@ -82,7 +74,6 @@ to setup-social-network
       ask this-cluster [
         set family-id cluster-id
       ]
-      ;; 集群内部全连接或高密度连接 (小世界/亲族网络)
       ask this-cluster [
         create-kinships-with other this-cluster
       ]
@@ -91,42 +82,38 @@ to setup-social-network
     ]
   ]
 
-  ;; ========================================================
-  ;; 模式 B: 现代城市核心家庭 (Nuclear Family)
-  ;; 特征: 严格的 3-4 人封闭单元 (2 成人 + 1-2 儿童)，家庭之间无连接
-  ;; ========================================================
+  ;; 模式 B: 现代城市核心家庭 (2成人 + 1儿童封闭单元)
   if society-type = "Modern-Urban" [
     let fam-id 0
-    let unassigned-adults turtles with [role = "adult"]
-    let unassigned-children turtles with [role = "child"]
+    let unassigned-adults turtles with [role = "adult" and family-id = nobody]
+    let unassigned-children turtles with [role = "child" and family-id = nobody]
     
     while [any? unassigned-adults and any? unassigned-children] [
       let p1 one-of unassigned-adults
       let p2 one-of (unassigned-adults with [self != p1])
       let c1 one-of unassigned-children
       
-      let fam (turtle-set p1 p2 c1)
+      let fam (turtle-set p1 c1)
+      if p2 != nobody [
+        set fam (turtle-set fam p2)
+      ]
+      
       ask fam [ set family-id fam-id ]
       
-      ;; 父母之间建立连接，父母分别与孩子建立连接
       if p1 != nobody and p2 != nobody [ ask p1 [ create-kinship-with p2 ] ]
       if p1 != nobody and c1 != nobody [ ask p1 [ create-kinship-with c1 ] ]
       if p2 != nobody and c1 != nobody [ ask p2 [ create-kinship-with c1 ] ]
       
-      set unassigned-adults unassigned-adults with [family-id = nobody]
-      set unassigned-children unassigned-children with [family-id = nobody]
+      set unassigned-adults turtles with [role = "adult" and family-id = nobody]
+      set unassigned-children turtles with [role = "child" and family-id = nobody]
       set fam-id fam-id + 1
     ]
   ]
 
-  ;; ========================================================
-  ;; 模式 C: 留守/边缘化过渡结构 (Left-Behind / Atomized)
-  ;; 特征: 照料者严重缺失 (外出务工)，儿童之间微弱抱团，整体呈原子化
-  ;; ========================================================
+  ;; 模式 C: 留守/原子化结构 (照料者缺失，仅25%儿童有微弱邻近支持)
   if society-type = "Left-Behind" [
-    ;; 只给极少数成年人与儿童保留连接，大多数个体独立无依
     ask turtles with [role = "child"] [
-      if random-float 1.0 < 0.25 [  ;; 仅 25% 儿童有微弱支持连边
+      if random-float 1.0 < 0.25 [
         let nearby-friend one-of (other turtles in-radius 6)
         if nearby-friend != nobody [
           create-kinship-with nearby-friend
@@ -193,29 +180,21 @@ end
 ;; =========================================
 
 to go
-  ifelse epoch-ticks >= epoch-duration [
-    
-    let sec count turtles with [color = green]
-    let dis count turtles with [color = yellow]
-    let pre count turtles with [color = blue]
-    let fea count turtles with [color = red]
-    
-    print "===================================="
-    print (word "End of Gen " generation " | Survivors: " count turtles " / " initial-pop)
-    print (word "Secure (Green): " sec)
-    print (word "Dismissing (Yellow): " dis)
-    print (word "Preoccupied (Blue): " pre)
-    print (word "Fearful (Red): " fea)
-    print "===================================="
+  if not any? turtles [
+    stop
+  ]
 
+  ifelse epoch-ticks >= epoch-duration [
     reproduce
-    reset-epoch
-    set generation generation + 1
+    
+    if any? turtles [
+      setup-social-network
+      reset-epoch
+      set generation generation + 1
+    ]
   ] [
-    ;; 1. 更新灾难环境状态
     update-disaster
     
-    ;; 2. Agent 决策、行为、代谢与存活检测
     ask turtles [
       if energy > 0 [
         decide-action
@@ -237,6 +216,9 @@ end
 to reset-epoch
   set epoch-ticks 0
   set disaster-radius 0
+  set deaths-by-burn 0
+  set deaths-by-exhaustion 0
+  
   ask patches [ set pcolor black ]
   
   ask turtles [
@@ -250,7 +232,6 @@ to update-disaster
   let max-radius (max-pxcor * 1.5)
   let speed max-radius / epoch-duration
 
-  ; 1. 传统扩散圈 (限制最大扩散半径，留出外围 8 格安全缓冲区)
   if disaster-type = "Expanding-Circle" [
     let target-r epoch-ticks * speed
     let safe-limit (max-pxcor - 8)
@@ -263,7 +244,6 @@ to update-disaster
     ]
   ]
   
-  ; 2. 平推式火墙 (从左向右横扫)
   if disaster-type = "Sweeping-Wall" [
     let wall-speed (max-pxcor - min-pxcor) / epoch-duration
     let current-wall-x min-pxcor + (epoch-ticks * wall-speed)
@@ -272,9 +252,7 @@ to update-disaster
     ]
   ]
   
-  ; 3. 随机多点爆发 (上限 35% 面积，带自然熄灭/降温机制)
   if disaster-type = "Random-Outbreaks" [
-    ;; 当总受灾面积小于全图 35% 时，每 10 ticks 产生新增火点
     if (count patches with [pcolor = red - 2] < 0.35 * count patches) [
       if epoch-ticks mod 10 = 0 [
         ask up-to-n-of 3 patches with [pcolor = black] [
@@ -282,7 +260,6 @@ to update-disaster
         ]
       ]
     ]
-    ;; 自然熄灭机制：每 15 ticks 让少量火区熄灭复原，维持局部逃生微通道
     if epoch-ticks mod 15 = 0 [
       ask up-to-n-of 2 patches with [pcolor = red - 2] [
         set pcolor black
@@ -290,7 +267,6 @@ to update-disaster
     ]
   ]
   
-  ; 4. 大逃杀缩圈 (中心保留最小半径 6 的安全核心区)
   if disaster-type = "Shrinking-Zone" [
     let safe-radius max-radius - (epoch-ticks * speed)
     if safe-radius < 6 [ set safe-radius 6 ]
@@ -313,7 +289,6 @@ to decide-action
   ]
 end
 
-
 to move
   ifelse state = "wandering" [
     rt random-float 40 - 20
@@ -322,7 +297,7 @@ to move
     let force-x 0
     let force-y 0
     
-    ; Vector 1: Intelligent Evasion (Flee from the nearest threat in vision)
+    ; Vector 1: Threat Evasion
     let threat min-one-of (patches in-radius vision-radius with [pcolor = red - 2]) [distance myself]
     if threat != nobody [
       let fire-dx xcor - [pxcor] of threat
@@ -335,7 +310,7 @@ to move
       ]
     ]
     
-    ; Vector 2: Social force (driven by Avoidance)
+    ; Vector 2: Social Force
     let flockmates other turtles in-radius 5
     if any? flockmates [
       let center-x mean [xcor] of flockmates
@@ -354,7 +329,7 @@ to move
       ]
     ]
     
-    ; Vector 3: Attachment Proximity Seeking (向最近的亲属/照料者靠拢)
+    ; Vector 3: Attachment Proximity Seeking
     let kin-partners link-neighbors in-radius vision-radius
     if any? kin-partners [
       let closest-kin min-one-of kin-partners [distance myself]
@@ -379,11 +354,8 @@ end
 to consume-energy
   let metabolism 0.2
   let anxiety-cost ((anxiety + 1) * 0.1)
-  
-  ;; 检查身边 3 格内是否有连接的亲属存在
   let has-support-nearby any? (link-neighbors in-radius 3)
   
-  ;; 若身边有亲属支持，焦虑能耗降低 50%（社会安全基地效应）
   if has-support-nearby [
     set anxiety-cost anxiety-cost * 0.5
   ]
@@ -397,14 +369,17 @@ to consume-energy
 end
 
 to check-death
-  ;; 踩在危险地块上每 tick 受到额外高额灼伤扣能
-  if pcolor = red - 2 [
-    set energy energy - 5.0
+  if energy <= 0 [
+    set deaths-by-exhaustion deaths-by-exhaustion + 1
+    die
   ]
   
-  ;; 能量耗尽死亡
-  if energy <= 0 [
-    die
+  if pcolor = red - 2 [
+    set energy energy - 5.0
+    if energy <= 0 [
+      set deaths-by-burn deaths-by-burn + 1
+      die
+    ]
   ]
 end
 
@@ -415,7 +390,6 @@ end
 to reproduce
   let survivors count turtles
   if survivors = 0 [
-    print "Extinction Event: No agents survived!"
     stop
   ]
   
@@ -434,6 +408,30 @@ to reproduce
       ]
     ]
   ]
+end
+
+;; =========================================
+;; BehaviorSpace 防灭绝安全统计 Reporters
+;; =========================================
+
+to-report safe-mean-anxiety
+  ifelse any? turtles [ report mean [anxiety] of turtles ] [ report 0 ]
+end
+
+to-report safe-mean-avoidance
+  ifelse any? turtles [ report mean [avoidance] of turtles ] [ report 0 ]
+end
+
+to-report safe-sd-anxiety
+  ifelse count turtles > 1 [ report standard-deviation [anxiety] of turtles ] [ report 0 ]
+end
+
+to-report safe-sd-avoidance
+  ifelse count turtles > 1 [ report standard-deviation [avoidance] of turtles ] [ report 0 ]
+end
+
+to-report safe-mean-energy
+  ifelse any? turtles [ report mean [energy] of turtles ] [ report 0 ]
 end]]></code>
   <widgets>
     <view x="955" wrappingAllowedX="false" y="45" frameRate="30.0" minPycor="-40" height="653" showTickCounter="true" patchSize="8.0" fontSize="10" wrappingAllowedY="false" width="653" tickCounterLabel="ticks" maxPycor="40" updateMode="0" maxPxcor="40" minPxcor="-40"></view>
@@ -1436,6 +1434,49 @@ set-plot-background-color black</update>
         </enumeratedValueSet>
         <enumeratedValueSet variable="initial-pop">
           <value value="110"></value>
+        </enumeratedValueSet>
+      </constants>
+    </experiment>
+    <experiment name="Main_Uniform_3Soc_4Dis" repetitions="30" sequentialRunOrder="true" runMetricsEveryStep="false">
+      <setup>setup</setup>
+      <go>go</go>
+      <exitCondition><![CDATA[generation > 80 or not any? turtles]]></exitCondition>
+      <runMetricsCondition>epoch-ticks = epoch-duration</runMetricsCondition>
+      <metrics>
+        <metric>generation</metric>
+        <metric>count turtles</metric>
+        <metric>count turtles with [color = green]</metric>
+        <metric>count turtles with [color = yellow]</metric>
+        <metric>count turtles with [color = blue]</metric>
+        <metric>count turtles with [color = red]</metric>
+        <metric>deaths-by-burn</metric>
+        <metric>deaths-by-exhaustion</metric>
+        <metric>safe-mean-anxiety</metric>
+        <metric>safe-mean-avoidance</metric>
+        <metric>safe-sd-anxiety</metric>
+        <metric>safe-sd-avoidance</metric>
+        <metric>safe-mean-energy</metric>
+      </metrics>
+      <constants>
+        <enumeratedValueSet variable="society-type">
+          <value value="&quot;Traditional-Rural&quot;"></value>
+          <value value="&quot;Modern-Urban&quot;"></value>
+          <value value="&quot;Left-Behind&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="disaster-type">
+          <value value="&quot;Expanding-Circle&quot;"></value>
+          <value value="&quot;Sweeping-Wall&quot;"></value>
+          <value value="&quot;Random-Outbreaks&quot;"></value>
+          <value value="&quot;Shrinking-Zone&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="init-mode">
+          <value value="&quot;Empirical-Real&quot;"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="epoch-duration">
+          <value value="200"></value>
+        </enumeratedValueSet>
+        <enumeratedValueSet variable="initial-pop">
+          <value value="150"></value>
         </enumeratedValueSet>
       </constants>
     </experiment>
